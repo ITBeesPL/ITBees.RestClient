@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ITBees.RestClient.Interfaces;
 using ITBees.RestClient.Interfaces.RestModelMarkup;
+using Newtonsoft.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace ITBees.RestClient
 {
@@ -51,31 +52,38 @@ namespace ITBees.RestClient
             throw new Exception(result.ReasonPhrase);
         }
 
-        public Task<T> Get(string endpoint, string queryParameters)
+        public async Task<T> Get(string endpoint, string queryParameters)
         {
-            return Get($"{endpoint}?{queryParameters}");
+            return await Get($"{endpoint}?{queryParameters}");
         }
 
-        public Task<T> Get(string endpoint, IClassTransformableToGetQuery objectWithQuery)
+        public async Task<T> Get(string endpoint, IClassTransformableToGetQuery objectWithQuery)
         {
-            return Get($"{endpoint}?{objectWithQuery.CreateGetQueryFromClassProperties()}");
+            return await Get($"{endpoint}?{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
-        public Task<T> Get(IClassTransformableToGetQuery objectWithQuery)
+        public async Task<T> Get(IClassTransformableToGetQuery objectWithQuery)
         {
-            return Get($"{objectWithQuery.GetApiEndpointUrl()}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
+            return await Get($"{objectWithQuery.GetApiEndpointUrl()}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
-        Task<T> IRestClient<T>.Post<T2>(string endpoint, T2 postModel)
+        async Task<T> IRestClient<T>.Post(string endpoint, IInputOrViewModel postModel)
         {
-            return Post(endpoint, postModel);
+            return await Post(endpoint, postModel);
         }
 
-        public async Task<T> Put<T2>(string endpoint, T2 updateModel) where T2 : Um
+        public async Task<T> Post(IInputOrViewModel postModel)
+        {
+            return await Post(postModel.GetApiEndpointUrl(), postModel);
+        }
+
+        public async Task<T> Put(string endpoint, IUm updateModel)
         {
             HandleTokenAuthorization();
             var requestUri = GetRequestUri(endpoint);
-            var result = await _client.PutAsJsonAsync(requestUri, updateModel);
+            var content = new StringContent(JsonConvert.SerializeObject(updateModel));
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            var result = await _client.PutAsync(requestUri, content);
             if (result.IsSuccessStatusCode)
             {
                 var readAsStringAsync = await result.Content.ReadAsStringAsync();
@@ -89,7 +97,7 @@ namespace ITBees.RestClient
             if (result.StatusCode == HttpStatusCode.Unauthorized && RequestInRetry == false && await RefreshToken())
             {
                 RequestInRetry = true;
-                return await Post(endpoint, updateModel);
+                return await Put(endpoint, updateModel);
             }
 
             RequestInRetry = false;
@@ -97,9 +105,9 @@ namespace ITBees.RestClient
             throw new Exception(result.ReasonPhrase);
         }
 
-        public Task<T> Put<T2>(T2 updateModel) where T2 : Um
+        public async Task<T> Put(IUm updateModel) 
         {
-            return Put(updateModel.GetApiEndpointUrl(), updateModel);
+            return await Put(updateModel.GetApiEndpointUrl(), updateModel);
         }
 
         public async Task Delete(string endpoint)
@@ -122,25 +130,25 @@ namespace ITBees.RestClient
             throw new Exception(result.ReasonPhrase);
         }
 
-        public Task Delete<T2>(T2 deleteModel) where T2 : Dm
+        public async Task Delete(IDm deleteModel)
         {
-            return Delete($"{deleteModel.GetApiEndpointUrl()}?{deleteModel.CreateGetQueryFromClassProperties()}");
+            await Delete($"{deleteModel.GetApiEndpointUrl()}?{deleteModel.CreateGetQueryFromClassProperties()}");
         }
 
-        public Task<List<T>> GetMany(IClassTransformableToGetQuery objectWithQuery)
+        public async Task<List<T>> GetMany(IClassTransformableToGetQuery objectWithQuery)
         {
-            return GetMany(
+            return await GetMany(
                 $"{objectWithQuery.GetApiEndpointUrl()}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
-        public Task<List<T>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery)
+        public async Task<List<T>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery)
         {
-            return GetMany($"{endpoint}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
+            return await GetMany($"{endpoint}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
-        public Task<List<T>> GetMany(string endpoint, string queryParameters)
+        public async Task<List<T>> GetMany(string endpoint, string queryParameters)
         {
-            return GetMany($"{endpoint}?{queryParameters}");
+            return await GetMany($"{endpoint}?{queryParameters}");
         }
 
         public async Task<List<T>> GetMany(string queryUrl)
@@ -169,11 +177,14 @@ namespace ITBees.RestClient
             throw new Exception(result.ReasonPhrase);
         }
 
-        public async Task<T> Post<T2>(string endpoint, T2 model) where T2 : class
+        public async Task<T> Post(string endpoint, IIm model)
         {
             HandleTokenAuthorization();
             var requestUri = GetRequestUri(endpoint);
-            var result = await _client.PostAsJsonAsync(requestUri, model);
+            var content = new StringContent(JsonConvert.SerializeObject(model));
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var result = await _client.PostAsync(requestUri, content);
             if (result.IsSuccessStatusCode)
             {
                 var readAsStringAsync = await result.Content.ReadAsStringAsync();
@@ -203,33 +214,6 @@ namespace ITBees.RestClient
             return requestUri;
         }
 
-        public async Task<T> Put(string url, T model)
-        {
-            HandleTokenAuthorization();
-            var requestUri = GetRequestUri(url);
-            var result = await _client.PutAsJsonAsync(requestUri, model);
-            if (result.IsSuccessStatusCode)
-            {
-                var readAsStringAsync = await result.Content.ReadAsStringAsync();
-                var deserialized = JsonSerializer.Deserialize<T>(readAsStringAsync, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                })!;
-                return deserialized;
-            }
-
-            if (result.StatusCode == HttpStatusCode.Unauthorized && RequestInRetry == false && await RefreshToken())
-            {
-                RequestInRetry = true;
-                return await Post(url, model);
-            }
-
-            RequestInRetry = false;
-
-            throw new Exception(result.ReasonPhrase);
-        }
-
-
         private async Task<bool> RefreshToken()
         {
             _isTokenSet = false;
@@ -237,17 +221,17 @@ namespace ITBees.RestClient
             return await _tokenService.DoLogin();
         }
 
-        public Task<List<T>> GetMany(string endpoint,
+        public async Task<List<T>> GetMany(string endpoint,
             ClassTransformableToGetQuery classTransformableToGetObjectWithQuery)
         {
-            return GetMany($"{endpoint}/{classTransformableToGetObjectWithQuery.CreateGetQueryFromClassProperties()}");
+            return await GetMany($"{endpoint}/{classTransformableToGetObjectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
         private async Task<HttpResponseMessage> HttpResponseMessage(string queryUrl)
         {
             if (queryUrl.StartsWith("/") == false)
                 queryUrl = $"/{queryUrl}";
-            var requestUri = $"{_webapiEndpointSetup.WebApiUrl}{queryUrl}";
+            var requestUri = $"{_webapiEndpointSetup.WebApiUrl.Trim()}{queryUrl.Trim()}";
             var result = await _client.GetAsync(requestUri);
             return result;
         }

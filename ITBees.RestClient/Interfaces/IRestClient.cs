@@ -4,23 +4,25 @@ using ITBees.RestClient.Interfaces.RestModelMarkup;
 
 namespace ITBees.RestClient.Interfaces
 {
-    public interface IRestClient<T> where T : Vm
+    public interface IRestClient<TViewModel> where TViewModel : Vm
     {
-        Task<List<T>> GetMany(IClassTransformableToGetQuery objectWithQuery);
-        Task<List<T>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery);
-        Task<List<T>> GetMany(string endpoint, string queryParameters);
-        Task<List<T>> GetMany(string queryUrl);
+        Task<List<TViewModel>> GetMany(IClassTransformableToGetQuery objectWithQuery);
+        Task<List<TViewModel>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery);
+        Task<List<TViewModel>> GetMany(string endpoint, string queryParameters);
+        Task<List<TViewModel>> GetMany(string queryUrl);
 
-        Task<T> Get(string queryUrl);
-        Task<T> Get(string endpoint, string queryParameters);
-        Task<T> Get(string endpoint, IClassTransformableToGetQuery objectWithQuery);
-        Task<T> Get(IClassTransformableToGetQuery objectWithQuery);
+        Task<TViewModel> Get(string queryUrl);
+        Task<TViewModel> Get(string endpoint, string queryParameters);
+        Task<TViewModel> Get(string endpoint, IClassTransformableToGetQuery objectWithQuery);
+        Task<TViewModel> Get(IClassTransformableToGetQuery objectWithQuery);
 
-        Task<T> Post<T2>(string endpoint, T2 postModel) where T2 : Im;
-        Task<T> Put<T2>(string endpoint, T2 updateModel) where T2 : Um;
-        Task<T> Put<T2>(T2 updateModel) where T2 : Um;
+        Task<TViewModel> Post(string endpoint, IInputOrViewModel postModel);
+        Task<TViewModel> Post(IInputOrViewModel postModel);
+
+        Task<TViewModel> Put(string endpoint, IUm updateModel);
+        Task<TViewModel> Put(IUm updateModel);
 
         Task Delete(string endpoint);
-        Task Delete<T2>(T2 deleteModel) where T2 : Dm;
+        Task Delete(IDm deleteModel);
     }
 }

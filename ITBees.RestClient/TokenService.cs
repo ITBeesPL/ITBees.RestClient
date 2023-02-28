@@ -50,7 +50,8 @@ namespace ITBees.RestClient
             var loginPair = new LoginInput(username, password);
 
             var stringContent = new StringContent(JsonSerializer.Serialize(loginPair), System.Text.Encoding.UTF8, "application/json");
-            var requestUri = new Uri($"{_apiEndpointSetup.WebApiUrl}/{_apiEndpointSetup.LoginEndpoint}");
+            var uriString = $"{_apiEndpointSetup.WebApiUrl.Trim()}/{_apiEndpointSetup.LoginEndpoint.Trim()}";
+            var requestUri = new Uri(uriString);
             var result = await _client.PostAsync(requestUri, stringContent);
             if (result.IsSuccessStatusCode)
             {
