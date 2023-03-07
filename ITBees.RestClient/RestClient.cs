@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
+using InheritedMapper;
 using ITBees.RestClient.Interfaces;
 using ITBees.RestClient.Interfaces.RestModelMarkup;
 using Newtonsoft.Json;
@@ -12,33 +14,42 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace ITBees.RestClient
 {
-    public class RestClient<T> : IRestClient<T> where T : Vm
+    public class RestClient<T> : IRestClient<T> where T : Vm, new()
     {
-        private readonly HttpClient _client;
+        private readonly IHttpClient _client;
         private readonly ITokenService _tokenService;
         private readonly IWebapiEndpointSetup _webapiEndpointSetup;
         private bool _isTokenSet;
 
         private bool RequestInRetry;
 
+        public RestClient(IWebapiEndpointSetup webapiEndpointSetup, ITokenService tokenService, IHttpClient httpClient)
+        {
+            _webapiEndpointSetup = webapiEndpointSetup;
+            _tokenService = tokenService;
+            _client = httpClient;
+        }
+
         public RestClient(IWebapiEndpointSetup webapiEndpointSetup, ITokenService tokenService)
         {
             _webapiEndpointSetup = webapiEndpointSetup;
             _tokenService = tokenService;
-            _client = new HttpClient();
+            _client = new HttpClientWrapper();
         }
 
         public async Task<T> Get(string queryUrl)
         {
-            HandleTokenAuthorization();
+            await HandleTokenAuthorization();
             var result = await HttpResponseMessage(queryUrl);
             if (result.IsSuccessStatusCode)
             {
                 var readAsStringAsync = await result.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<T>(readAsStringAsync, new JsonSerializerOptions
+                if (result.StatusCode == HttpStatusCode.NoContent)
                 {
-                    PropertyNameCaseInsensitive = true
-                })!;
+                    return null;
+                }
+
+                return (T)new DerivedVmClassResolver<T>().Get(readAsStringAsync);
             }
 
             if (result.StatusCode == HttpStatusCode.Unauthorized && RequestInRetry == false && await RefreshToken())
@@ -64,7 +75,7 @@ namespace ITBees.RestClient
 
         public async Task<T> Get(IClassTransformableToGetQuery objectWithQuery)
         {
-            return await Get($"{objectWithQuery.GetApiEndpointUrl()}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
+            return await Get($"{objectWithQuery.GetApiEndpointUrl()}?{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
         async Task<T> IRestClient<T>.Post(string endpoint, IInputOrViewModel postModel)
@@ -79,7 +90,7 @@ namespace ITBees.RestClient
 
         public async Task<T> Put(string endpoint, IUm updateModel)
         {
-            HandleTokenAuthorization();
+            await HandleTokenAuthorization();
             var requestUri = GetRequestUri(endpoint);
             var content = new StringContent(JsonConvert.SerializeObject(updateModel));
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -105,14 +116,14 @@ namespace ITBees.RestClient
             throw new Exception(result.ReasonPhrase);
         }
 
-        public async Task<T> Put(IUm updateModel) 
+        public async Task<T> Put(IUm updateModel)
         {
             return await Put(updateModel.GetApiEndpointUrl(), updateModel);
         }
 
         public async Task Delete(string endpoint)
         {
-            HandleTokenAuthorization();
+            await HandleTokenAuthorization();
             var requestUri = GetRequestUri(endpoint);
             var result = await _client.DeleteAsync(requestUri);
             if (result.IsSuccessStatusCode) return;
@@ -135,10 +146,15 @@ namespace ITBees.RestClient
             await Delete($"{deleteModel.GetApiEndpointUrl()}?{deleteModel.CreateGetQueryFromClassProperties()}");
         }
 
+        /// <summary>
+        /// Returns list of view models from endpoint. Endpoint url will be created using 's' letter for example MyAccountVm will generate 'https://localhost:0000/myAccounts' endpoint
+        /// </summary>
+        /// <param name="objectWithQuery"></param>
+        /// <returns></returns>
         public async Task<List<T>> GetMany(IClassTransformableToGetQuery objectWithQuery)
         {
             return await GetMany(
-                $"{objectWithQuery.GetApiEndpointUrl()}/{objectWithQuery.CreateGetQueryFromClassProperties()}");
+                $"{objectWithQuery.GetApiEndpointUrl()}s/{objectWithQuery.CreateGetQueryFromClassProperties()}");
         }
 
         public async Task<List<T>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery)
@@ -153,17 +169,14 @@ namespace ITBees.RestClient
 
         public async Task<List<T>> GetMany(string queryUrl)
         {
-            HandleTokenAuthorization();
+            await HandleTokenAuthorization();
 
             var result = await HttpResponseMessage(queryUrl);
             if (result.IsSuccessStatusCode)
             {
                 var readAsStringAsync = await result.Content.ReadAsStringAsync();
-                var deserialized = JsonSerializer.Deserialize<List<T>>(readAsStringAsync, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                })!;
-                return deserialized;
+
+                return (List<T>)new DerivedVmClassResolver<T>().GetMany(readAsStringAsync);
             }
 
             if (result.StatusCode == HttpStatusCode.Unauthorized && RequestInRetry == false && await RefreshToken())
@@ -179,7 +192,7 @@ namespace ITBees.RestClient
 
         public async Task<T> Post(string endpoint, IIm model)
         {
-            HandleTokenAuthorization();
+            await HandleTokenAuthorization();
             var requestUri = GetRequestUri(endpoint);
             var content = new StringContent(JsonConvert.SerializeObject(model));
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -236,12 +249,20 @@ namespace ITBees.RestClient
             return result;
         }
 
-        private void HandleTokenAuthorization()
+        private async Task HandleTokenAuthorization()
         {
+            if (string.IsNullOrEmpty(_tokenService.Token))
+            {
+                await _tokenService.DoLogin();
+            }
+
             if (_isTokenSet == false)
             {
-                _client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _tokenService.Token);
+                if (_client.DefaultRequestHeaders != null)
+                {
+                    _client.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", _tokenService.Token);
+                }
                 _isTokenSet = true;
             }
         }

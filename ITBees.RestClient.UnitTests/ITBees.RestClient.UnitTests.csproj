@@ -12,7 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\InheritedMapper\InheritedMapper\InheritedMapper.csproj" />
     <ProjectReference Include="..\ITBees.RestClient\ITBees.RestClient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="RestClientTests\" />
   </ItemGroup>
 
 </Project>

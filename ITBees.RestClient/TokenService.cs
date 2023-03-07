@@ -20,14 +20,7 @@ namespace ITBees.RestClient
 
         public string Token
         {
-            get
-            {
-                if (_token == null)
-                {
-                    throw new Exception("Not logged in.");
-                }
-                return _token;
-            }
+            get => _token;
             set => _token = value;
         }
 
