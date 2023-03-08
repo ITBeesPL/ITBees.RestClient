@@ -6,5 +6,6 @@
         string Pass { get; set; }
         string WebApiUrl { get; set; }
         string LoginEndpoint { get; set; }
+        void ReloadSettings();
     }
 }
