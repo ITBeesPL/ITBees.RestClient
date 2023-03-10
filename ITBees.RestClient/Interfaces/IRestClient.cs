@@ -4,7 +4,7 @@ using ITBees.RestClient.Interfaces.RestModelMarkup;
 
 namespace ITBees.RestClient.Interfaces
 {
-    public interface IRestClient<TViewModel> where TViewModel : Vm
+    public interface IRestClient<TViewModel> where TViewModel : Vm, new()
     {
         Task<List<TViewModel>> GetMany(IClassTransformableToGetQuery objectWithQuery);
         Task<List<TViewModel>> GetMany(string endpoint, IClassTransformableToGetQuery objectWithQuery);

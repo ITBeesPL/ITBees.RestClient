@@ -6,11 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ITBeesPL.InheritedMapper" Version="5.0.7" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\InheritedMapper\InheritedMapper\InheritedMapper.csproj" />
   </ItemGroup>
 
 </Project>
