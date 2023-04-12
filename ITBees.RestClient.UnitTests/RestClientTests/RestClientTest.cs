@@ -25,8 +25,8 @@ namespace ITBees.RestClient.UnitTests.RestClientTests
             httpClientMock.Setup(x => x.GetAsync(It.IsAny<string>())).ReturnsAsync(httpResponseMessage);
             var targetClassesStrings = new List<DerivedFromBase>()
             {
-                new() {BaseType = "DerivedFromBase", Value = "1"},
-                new() {BaseType = "DerivedFromBase", Value = "2"}
+                new() {BaseVmType = "DerivedFromBase", Value = "1"},
+                new() {BaseVmType = "DerivedFromBase", Value = "2"}
             };
             var serializedResponse = JsonSerializer.Serialize(targetClassesStrings);
             httpResponseMessage.Content = new StringContent(serializedResponse);

@@ -13,7 +13,7 @@ namespace ITBees.RestClient.UnitTests.DerivedViewModels
         {
             TinyMapper.Bind<BaseVm, DerivedFromBase>();
             var derivedVmClassResolver = new DerivedVmClassResolver<BaseVm>();
-            var classToSerialize = new BaseVm() { BaseType = "DerivedFromBase", Value = "Test123" };
+            var classToSerialize = new BaseVm() { BaseVmType = "DerivedFromBase", Value = "Test123" };
             var serializedDerivedFromBaseClass = JsonSerializer.Serialize(classToSerialize); ;
 
             object result = derivedVmClassResolver.Get(serializedDerivedFromBaseClass);
@@ -26,7 +26,7 @@ namespace ITBees.RestClient.UnitTests.DerivedViewModels
 
     public class BaseVm : Vm
     {
-        public string BaseType { get; set; }
+        public string BaseVmType { get; set; }
         public string Value { get; set; }
     }
 
