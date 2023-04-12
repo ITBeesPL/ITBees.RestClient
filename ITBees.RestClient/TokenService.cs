@@ -26,7 +26,7 @@ namespace ITBees.RestClient
 
         public async Task<string> DoLogin(IWebapiEndpointSetup webapiEndpointSetup)
         {
-            return await DoLogin(webapiEndpointSetup.Login, webapiEndpointSetup.Pass);
+            return await DoLogin(webapiEndpointSetup.Login, webapiEndpointSetup.Pass, webapiEndpointSetup.Language);
         }
 
         public async Task<bool> DoLogin()
@@ -34,13 +34,13 @@ namespace ITBees.RestClient
             if (_apiEndpointSetup == null)
                 throw new Exception("Token service must be initialized with ApiEndpointSetup service");
 
-            Token = await DoLogin(_apiEndpointSetup.Login, _apiEndpointSetup.Pass);
+            Token = await DoLogin(_apiEndpointSetup.Login, _apiEndpointSetup.Pass, _apiEndpointSetup.Language);
             return string.IsNullOrEmpty(Token) == false;
         }
 
-        public async Task<string> DoLogin(string username, string password)
+        public async Task<string> DoLogin(string username, string password, string language)
         {
-            var loginPair = new LoginInput(username, password);
+            var loginPair = new LoginInput(username, password, language);
 
             var stringContent = new StringContent(JsonSerializer.Serialize(loginPair), System.Text.Encoding.UTF8, "application/json");
             var uriString = $"{_apiEndpointSetup.WebApiUrl.Trim()}/{_apiEndpointSetup.LoginEndpoint.Trim()}";
