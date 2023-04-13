@@ -46,13 +46,14 @@ namespace ITBees.RestClient
             var uriString = $"{_apiEndpointSetup.WebApiUrl.Trim()}/{_apiEndpointSetup.LoginEndpoint.Trim()}";
             var requestUri = new Uri(uriString);
             var result = await _client.PostAsync(requestUri, stringContent);
+            var responseBody = await result.Content.ReadAsStringAsync();
             if (result.IsSuccessStatusCode)
             {
-                Token = await result.Content.ReadAsStringAsync();
+                Token = responseBody;
                 return Token;
             }
 
-            throw new Exception(result.ReasonPhrase);
+            throw new Exception(result.ReasonPhrase + responseBody);
         }
     }
 }
