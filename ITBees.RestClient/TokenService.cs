@@ -49,8 +49,29 @@ namespace ITBees.RestClient
             var responseBody = await result.Content.ReadAsStringAsync();
             if (result.IsSuccessStatusCode)
             {
-                Token = responseBody;
-                return Token;
+                if (responseBody.Contains("tokenExpirationDate"))
+                {
+                    var token = JsonSerializer.Deserialize<TokenResult>(responseBody, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (token != null)
+                    {
+                        return token.Value;
+                    }
+                    else
+                    {
+                        throw new Exception("Token result in unknown format, reponse body : " + responseBody);
+                    }
+                    
+                }
+                else
+                {
+                    Token = responseBody;
+                    return Token;
+                }
+                
             }
 
             throw new Exception(result.ReasonPhrase + responseBody);
