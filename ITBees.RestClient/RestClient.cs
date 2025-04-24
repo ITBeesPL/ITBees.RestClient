@@ -36,6 +36,14 @@ namespace ITBees.RestClient
             _tokenService = tokenService;
             _client = new HttpClientWrapper();
         }
+        
+        public RestClient(string apiUrl)
+        {
+            _webapiEndpointSetup = new AnonymousWebapiEndpointSetup(apiUrl);
+            _tokenService = new NoTokenNeeded();
+            _client = new HttpClientWrapper();
+            _isTokenSet = true;
+        }
 
         public async Task<T> Get(string queryUrl)
         {
